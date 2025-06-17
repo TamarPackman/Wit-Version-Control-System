@@ -1,15 +1,20 @@
+import io
 import json
 import shutil
+import zipfile
 
+
+import requests
+
+import io
+from IPython.display import display
+from PIL import Image
 import Exceptions
 import basicFunction
 import os
-
+import matplotlib.pyplot as plt
 from abstractWit import abstractWit
-
-
 class wit(abstractWit):
-
     @staticmethod
     def init():
         folderPath = os.path.join(os.getcwd(), '.wit')
@@ -28,7 +33,6 @@ class wit(abstractWit):
         else:
             # wit folder is exist
             raise Exceptions.FileExistsError("Reinitialized existing wit repository.")
-
     @staticmethod
     def add(name):
         full_pase_wit = os.path.join(os.getcwd(), '.wit')
@@ -74,7 +78,7 @@ class wit(abstractWit):
             for rep in repository_data['repository_data']:
                 if rep['path'] == os.path.join(os.getcwd(), '.wit'):
                     for commit_id, commit_value in rep['commit'].items():
-                        print(f"{commit_id}: {commit_value['message']}: {commit_value['name']}")
+                        print(f"{commit_id}: {commit_value['message']}: {commit_value['name']}:{commit_value['push']}")
                     break
 
     @staticmethod
@@ -102,3 +106,84 @@ class wit(abstractWit):
                 rep['version_hash_code'] = rep['commit'][commit_id]['name']
                 #calling to a function that update the data json
         basicFunction.dump_repository_data_json(repository_data)
+
+
+    @staticmethod
+    def push():
+        path_to_push=""
+        path=os.path.join(os.getcwd(), ".wit")
+        if not basicFunction.is_exist(path,"commit"):
+            print("fatal: The current branch master has no commits yet")
+            return
+        else:
+            repository_data = basicFunction.load_repository_data_json()
+            for rep in repository_data['repository_data']:
+                if rep['path'] == path:
+                    path_to_push=os.path.join(path,"commit",rep['version_hash_code'])
+                    break
+            if path_to_push=="":
+                raise Exception.witNotExistsError(
+                    "fatal: not a wit repository (or any of the parent directories): .wit")
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            if os.path.isdir(path_to_push):
+                for root, dirs, files in os.walk(path_to_push):
+                    for file in files:
+                        full_path = os.path.join(root, file)
+                        print(full_path)
+                        if os.path.samefile(root, path_to_push):
+                            arcname = file
+                        else:
+                            arcname = os.path.relpath(full_path, start=path_to_push)
+                        zipf.write(full_path,arcname=arcname)
+            else:
+                zipf.write(path_to_push,arcname=os.path.basename(path_to_push))
+        zip_buffer.seek(0)
+        data = {
+            "target_path":path
+        }
+        files = {
+            "file": ("code.zip", zip_buffer.getvalue(), "application/zip")
+        }
+
+        alerts = "http://localhost:8001/alerts"
+        analyze="http://localhost:8001/analyze"
+        try:
+           response_alerts = requests.post(alerts, data=data,files=files)
+           response_analyze=requests.post(analyze,data=data,files=files)
+        except Exception as e:
+          print("Error sending requests:", e)
+          return
+
+        print("Alerts status code:", response_alerts.status_code)
+        try:
+            print(json.dumps(response_alerts.json(), indent=4, ensure_ascii=False))
+        except:
+            print("Alerts response not JSON")
+
+        if response_analyze.status_code != 200:
+            print("Analyze response failed (status code:", response_analyze.status_code, ")")
+            return
+
+        else:
+            image_bytes = io.BytesIO(response_analyze.content)
+            img = Image.open(image_bytes)
+            img.load()
+            plt.imshow(img)
+            plt.axis('off')
+            plt.tight_layout()
+            plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
