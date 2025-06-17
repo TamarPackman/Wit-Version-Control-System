@@ -110,7 +110,8 @@ class wit(abstractWit):
 
     @staticmethod
     def push():
-        path_to_push=""
+        find_path=False
+        folders_to_push=[]
         path=os.path.join(os.getcwd(), ".wit")
         if not basicFunction.is_exist(path,"commit"):
             print("fatal: The current branch master has no commits yet")
@@ -119,25 +120,39 @@ class wit(abstractWit):
             repository_data = basicFunction.load_repository_data_json()
             for rep in repository_data['repository_data']:
                 if rep['path'] == path:
-                    path_to_push=os.path.join(path,"commit",rep['version_hash_code'])
+                    find_path=True
+                    commits = rep.get("commit", {})
+                    if commits=={}:
+                        print("fatal: The current branch master has no commits yet")
+                        return
+                    for commit_id, commit_data in commits.items():
+                        if commit_data.get("push") == False:
+                            folders_to_push.append(commit_data.get("name"))
+                            commit_data["push"]=True
+
                     break
-            if path_to_push=="":
+            basicFunction.dump_repository_data_json(repository_data)
+            if find_path==False:
                 raise Exception.witNotExistsError(
                     "fatal: not a wit repository (or any of the parent directories): .wit")
+            if folders_to_push==[]:
+                print("Everything up-to-date")
+                return
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            if os.path.isdir(path_to_push):
-                for root, dirs, files in os.walk(path_to_push):
+            for folder_to_push in folders_to_push:
+              full_path_folder_to_push=os.path.join(path,"commit",folder_to_push)
+              if os.path.isdir(full_path_folder_to_push):
+                for root, dirs, files in os.walk(full_path_folder_to_push):
                     for file in files:
                         full_path = os.path.join(root, file)
-                        print(full_path)
-                        if os.path.samefile(root, path_to_push):
+                        if os.path.samefile(root, full_path_folder_to_push):
                             arcname = file
                         else:
-                            arcname = os.path.relpath(full_path, start=path_to_push)
+                            arcname = os.path.relpath(full_path, start=full_path_folder_to_push)
                         zipf.write(full_path,arcname=arcname)
-            else:
-                zipf.write(path_to_push,arcname=os.path.basename(path_to_push))
+              else:
+                zipf.write(folder_to_push,arcname=os.path.basename(full_path_folder_to_push))
         zip_buffer.seek(0)
         data = {
             "target_path":path

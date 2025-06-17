@@ -1,16 +1,11 @@
 import click
-
 import Exceptions
 from wit import wit
-
-
 # !/usr/bin/env python3
 @click.group()
 def cli():
     """ Wit Version Control CLI """
     pass
-
-
 @click.command()
 def init():
     try:
@@ -20,11 +15,7 @@ def init():
         print(e)
     except Exception as e:
         print(e)
-
-
 cli.add_command(init)
-
-
 @click.command()
 @click.argument('name', type=click.STRING)
 def add(name):
@@ -75,8 +66,6 @@ def status():
         wit.status()
     except Exception as e:
         print(e)
-
-
 cli.add_command(status)
 
 
@@ -91,7 +80,18 @@ def check_out(commit_id):
     except Exception as e:
         print(e)
 
-
 cli.add_command(check_out)
+
+@click.command()
+def push():
+    try:
+        wit.push()
+    except Exceptions.witNotExistsError as e:
+        print(e)
+    except Exception as e:
+       print(e)
+cli.add_command(push)
+
+
 if __name__ == '__main__':
     cli()

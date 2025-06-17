@@ -24,8 +24,8 @@ def is_exist(path, folder_name):
 
 #function to create new folder
 def create_file(path, file_name):
-    with open(os.path.join(path, '.wit', 'stagingArea', file_name), 'w') as file:
-        with open(os.path.join(path, file_name), "r") as readingFile:
+    with open(os.path.join(path, '.wit', 'stagingArea', file_name), 'w',encoding="utf-8") as file:
+        with open(os.path.join(path, file_name), "r",encoding="utf-8") as readingFile:
             file.write(readingFile.read())
 
 #function to add new version to commit
@@ -47,7 +47,8 @@ def add_version_to_commit_list(path, commit_message):
             #create new version
             i['commit'][str(int(last_hash_code) + 1)] = {
                 "message": commit_message,
-                "name": str(datetime.date.today()) + " code-" + str(int(last_hash_code) + 1)
+                "name": str(datetime.date.today()) + " code-" + str(int(last_hash_code) + 1),
+                "push":False
             }
             #save the name of the last commit
             last_commit = i['commit'][str(int(last_hash_code) + 1)]['name']

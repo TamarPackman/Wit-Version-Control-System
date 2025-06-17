@@ -22,4 +22,7 @@ class abstractWit():
     @staticmethod
     def check_out():
         pass
+    @staticmethod
+    def push():
+        pass
 
